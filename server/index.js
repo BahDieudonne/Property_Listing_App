@@ -10,17 +10,17 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Routes
+// ========= Routes =========================
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/properties', require('./routes/propertyRoutes'));
 
-// 404 handler
+// ========= 404 handler =========================
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-// Global error handler
+// ========= Global error handler =========================
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Internal server error' });
