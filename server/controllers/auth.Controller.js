@@ -1,7 +1,15 @@
 const jwt = require('jsonwebtoken');
 const { findByEmail, findByUsername, createUser } = require('../repositories/userRepository');
 
-// Helper function to generate a signed JWT token containing the user's ID
+// Cookie configuration — same settings used everywhere
+const COOKIE_OPTIONS = {
+  httpOnly: true,  
+  secure: process.env.NODE_ENV === 'production', 
+  sameSite: 'lax', 
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
+// Helper: generate a signed JWT containing the user's ID
 const generateToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
 
@@ -10,33 +18,32 @@ const generateToken = (id) =>
 const register = async (req, res) => {
   const { username, email, password } = req.body;
 
-  // Validate that all required fields were provided
   if (!username || !email || !password) {
     return res.status(400).json({ message: 'All fields are required' });
   }
 
-  // Check if email is already registered to prevent duplicates
   const emailExists = await findByEmail(email);
   if (emailExists) return res.status(400).json({ message: 'Email already in use' });
 
-  // Check if username is already taken
   const usernameExists = await findByUsername(username);
   if (usernameExists) return res.status(400).json({ message: 'Username already taken' });
 
-  // Create the user and hash the password 
+  // Create user, password is hashed automatically by the pre-save hook
   const user = await createUser({ username, email, password });
 
   const token = generateToken(user._id);
 
-  // Return 201 Created with the token and safe user data 
+  res.cookie('token', token, COOKIE_OPTIONS);
+
+  // Return the safe user data (no token in body, no password)
   res.status(201).json({
-    token,
     user: {
       id:       user._id,
       username: user.username,
       email:    user.email,
       name:     user.name,
       avatar:   user.avatar,
+      phone:    user.phone,
     },
   });
 };
@@ -51,28 +58,33 @@ const login = async (req, res) => {
   }
 
   const user = await findByEmail(email);
-
-  // Return the same generic message whether email or password is wrong
+  // Same generic message for wrong email or wrong password — don't reveal which
   if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
-  // Compare the provided password against the stored bcrypt hash
   const isMatch = await user.matchPassword(password);
   if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
 
-  // Generate a JWT for the authenticated user
   const token = generateToken(user._id);
 
-  // Return 200 OK with the token and safe user data
+  res.cookie('token', token, COOKIE_OPTIONS);
+
   res.status(200).json({
-    token,
     user: {
       id:       user._id,
       username: user.username,
       email:    user.email,
       name:     user.name,
       avatar:   user.avatar,
+      phone:    user.phone,
     },
   });
 };
 
-module.exports = { register, login };
+// ===== LOGOUT =====
+// POST /api/auth/logout
+const logout = (req, res) => {
+  res.cookie('token', '', { ...COOKIE_OPTIONS, maxAge: 0 });
+  res.status(200).json({ message: 'Logged out successfully' });
+};
+
+module.exports = { register, login, logout };

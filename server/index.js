@@ -1,36 +1,28 @@
-// Import required packages
-const express = require('express');   // Web framework for Node.js
-const cors    = require('cors');      // Allows the React frontend to communicate with this server
-const dotenv  = require('dotenv');    // Loads variables from .env file into process.env
+const express    = require('express');
+const cors       = require('cors');
+const dotenv     = require('dotenv');
+const cookieParser = require('cookie-parser'); // NEW: reads cookies from requests
+const connectDB  = require('./config/db');
 
-// Import our database connection function
-const connectDB = require('./config/db');
-
-// Load environment variables from .env into process.env
 dotenv.config();
-
-// Connect to MongoDB before starting the server
 connectDB();
 
-// Create the Express application
 const app = express();
 
-// ===== GLOBAL MIDDLEWARE =====
-app.use(cors());
+// Allow cookies to be sent from the React frontend (credentials: true is required)
+app.use(cors({
+  origin: 'http://localhost:3000', // React dev server origin
+  credentials: true,               // Allow cookies to be included in requests
+}));
 
 app.use(express.json());
+app.use(cookieParser()); // NEW: parse cookies so req.cookies is available
 
-// ===== ROUTES =====
-app.use('/api/auth',       require('./routes/auth.Routes'));
+app.use('/api/auth',       require('./routes/authRoutes'));
+app.use('/api/users',      require('./routes/userRoutes'));
+app.use('/api/properties', require('./routes/propertyRoutes'));
 
-// All user profile endpoints
-app.use('/api/users',      require('./routes/user.Routes'));
-
-// All property endpoints
-app.use('/api/properties', require('./routes/property.Routes'));
-
-// ===== ERROR HANDLERS =====
-// 404 handler — runs when no route matched the request
+// 404 handler
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
@@ -41,6 +33,5 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Internal server error' });
 });
 
-// ===== START SERVER =====
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
