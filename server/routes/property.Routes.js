@@ -1,6 +1,6 @@
 const express = require('express');
 const router  = express.Router();
-const ctrl    = require('../controllers/propertyController');
+const ctrl    = require('../controllers/property.Controller');
 const { protect }         = require('../middleware/authMiddleware');
 const { verifyOwnership } = require('../middleware/ownershipMiddleware');
 

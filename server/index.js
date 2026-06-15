@@ -21,13 +21,13 @@ app.use(cors());
 app.use(express.json());
 
 // ===== ROUTES =====
-app.use('/api/auth',       require('./routes/authRoutes'));
+app.use('/api/auth',       require('./routes/auth.Routes'));
 
 // All user profile endpoints
-app.use('/api/users',      require('./routes/userRoutes'));
+app.use('/api/users',      require('./routes/user.Routes'));
 
 // All property endpoints
-app.use('/api/properties', require('./routes/propertyRoutes'));
+app.use('/api/properties', require('./routes/property.Routes'));
 
 // ===== ERROR HANDLERS =====
 // 404 handler — runs when no route matched the request
