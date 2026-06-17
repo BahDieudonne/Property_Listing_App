@@ -6,22 +6,26 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    // logout() now calls the server to clear the HTTP-only cookie
-    await logout();
-    navigate('/');
+    await logout();   
+    navigate('/');  
   };
 
   return (
     <nav className="navbar">
       <Link to="/" className="navbar__brand">Prop<span>Space</span></Link>
+
       <div className="navbar__links">
         <Link to="/">Browse</Link>
+
+        {/* Show different links depending on whether the user is logged in */}
         {user ? (
           <>
             <Link to="/listings/new">List Property</Link>
             <Link to="/my-listings">My Listings</Link>
             <Link to="/profile">Profile</Link>
-            <button onClick={handleLogout} className="btn btn--outline btn--sm">Sign out</button>
+            <button onClick={handleLogout} className="btn btn--outline btn--sm">
+              Sign out
+            </button>
           </>
         ) : (
           <>

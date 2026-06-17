@@ -3,22 +3,20 @@ import axiosInstance from '../services/axiosInstance';
 import { AuthContext } from './AuthContext';
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user,    setUser]    = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const verifySession = async () => {
-      try {
-        const { data } = await axiosInstance.get('/users/me');
-        setUser(data);
-      } catch {
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
+    const controller = new AbortController();
 
-    verifySession();
+    axiosInstance.get('/users/me', { signal: controller.signal })
+      .then(({ data }) => setUser(data))
+      .catch(err => {
+        if (err.name !== 'CanceledError') setUser(null);
+      })
+      .finally(() => setLoading(false));
+
+    return () => controller.abort();
   }, []);
 
   const login = useCallback((userData) => {
@@ -29,7 +27,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await axiosInstance.post('/auth/logout');
     } catch {
-      // Clear local state even if the request fails
+      // Clear local state even if the server call fails
     } finally {
       setUser(null);
     }

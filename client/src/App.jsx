@@ -10,7 +10,8 @@ import Register      from './pages/Register';
 import Profile       from './pages/Profile';
 import MyListings    from './pages/MyListings';
 import CreateListing from './pages/CreateListing';
-import EditListing   from './pages/EditListing';
+import EditListing      from './pages/EditListing';
+import PropertyDetail  from './pages/PropertyDetail';
 
 import './App.css'; 
 function App() {
@@ -41,6 +42,17 @@ function App() {
             <Route path="/listings/edit/:id"
               element={<ProtectedRoute><EditListing /></ProtectedRoute>}
             />
+
+            {/* Public property detail view */}
+            <Route path="/listings/:id" element={<PropertyDetail />} />
+
+            {/* 404 — catch all unmatched paths */}
+            <Route path="*" element={
+              <div className="empty-state" style={{ marginTop: '4rem' }}>
+                <h2 style={{ marginBottom: '0.5rem' }}>404 — Page not found</h2>
+                <p>The page you're looking for doesn't exist.</p>
+              </div>
+            } />
           </Routes>
         </main>
       </BrowserRouter>

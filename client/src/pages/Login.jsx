@@ -1,17 +1,28 @@
-import { useState }           from 'react';
-import { useNavigate, Link }  from 'react-router-dom';
-import axiosInstance          from '../services/axiosInstance';
-import useAuth                from '../hooks/useAuth';
-import InputField             from '../components/InputField';
+import { useState }                    from 'react';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
+import axiosInstance                   from '../services/axiosInstance';
+import useAuth                         from '../hooks/useAuth';
+import InputField                      from '../components/InputField';
+import LoadingSpinner                  from '../components/LoadingSpinner';
+
+const EmailIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+    <rect x="2" y="4" width="20" height="16" rx="2" />
+    <path d="m2 7 10 7 10-7" />
+  </svg>
+);
 
 const Login = () => {
   const [form, setForm]               = useState({ email: '', password: '' });
   const [errors, setErrors]           = useState({});
   const [serverError, setServerError] = useState('');
-  const [loading, setLoading]         = useState(false);
+  const [submitting, setSubmitting]   = useState(false);
 
-  const { login } = useAuth();
-  const navigate  = useNavigate();
+  const { user, loading, login } = useAuth();
+  const navigate                 = useNavigate();
+
+  if (loading) return <LoadingSpinner />;
+  if (user)    return <Navigate to="/" replace />;
 
   const validate = () => {
     const errs = {};
@@ -28,7 +39,7 @@ const Login = () => {
     if (Object.keys(errs).length) return setErrors(errs);
 
     setErrors({});
-    setLoading(true);
+    setSubmitting(true);
 
     try {
       const { data } = await axiosInstance.post('/auth/login', form);
@@ -37,7 +48,7 @@ const Login = () => {
     } catch (err) {
       setServerError(err.response?.data?.message || 'Login failed');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -50,14 +61,37 @@ const Login = () => {
         {serverError && <div className="alert alert--error">{serverError}</div>}
 
         <form onSubmit={handleSubmit} noValidate>
-          <InputField label="Email" type="email" name="email" value={form.email} onChange={handleChange} error={errors.email} />
-          <InputField label="Password" type="password" name="password" value={form.password} onChange={handleChange} error={errors.password} />
-          <button type="submit" className="btn btn--primary btn--full" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
+          <InputField
+            label="Email"
+            type="email"
+            name="email"
+            icon={<EmailIcon />}
+            value={form.email}
+            onChange={handleChange}
+            error={errors.email}
+            placeholder="you@example.com"
+          />
+          <InputField
+            label="Password"
+            type="password"
+            name="password"
+            value={form.password}
+            onChange={handleChange}
+            error={errors.password}
+            placeholder="Your password"
+          />
+          <button
+            type="submit"
+            className="btn btn--primary btn--full"
+            disabled={submitting}
+          >
+            {submitting ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
-        <p className="auth-switch">Don't have an account? <Link to="/register">Sign up</Link></p>
+        <p className="auth-switch">
+          Don't have an account? <Link to="/register">Sign up</Link>
+        </p>
       </div>
     </div>
   );

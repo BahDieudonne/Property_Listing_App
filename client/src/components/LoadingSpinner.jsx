@@ -1,10 +1,7 @@
-const LoadingSpinner = () => {
-  return (
-    <div className="loading-spinner">
-      <div className="spinner" />
-      <span>Loading...</span>
-    </div>
-  );
-};
+const LoadingSpinner = () => (
+  <div className="spinner-wrap">
+    <div className="spinner" />
+  </div>
+);
 
 export default LoadingSpinner;
