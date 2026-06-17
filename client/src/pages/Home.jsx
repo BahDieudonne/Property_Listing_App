@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axiosInstance  from '../services/axiosInstance';
 import PropertyCard   from '../components/PropertyCard';
 import FilterSidebar  from '../components/FilterSidebar';
@@ -13,38 +13,24 @@ const Home = () => {
   const [error,      setError]      = useState('');
   const [activeTab,  setActiveTab]  = useState('All Stays');
 
-  // Holds the AbortController for the currently in-flight request
-  const abortCtrl = useRef(null);
-
-  // Cancels any previous request before starting a new one
   const fetchProperties = useCallback(async (filters = {}) => {
-    if (abortCtrl.current) abortCtrl.current.abort();
-    const controller = new AbortController();
-    abortCtrl.current = controller;
-
     setLoading(true);
     setError('');
     try {
-      const params = new URLSearchParams();
-      if (filters.city)     params.append('city',     filters.city);
-      if (filters.minPrice) params.append('minPrice', filters.minPrice);
-      if (filters.maxPrice) params.append('maxPrice', filters.maxPrice);
-
-      const { data } = await axiosInstance.get(`/properties?${params.toString()}`, {
-        signal: controller.signal,
+      const { data } = await axiosInstance.get('/properties', {
+        params: filters,
       });
       setProperties(data);
     } catch (err) {
-      if (err.name !== 'CanceledError') setError('Failed to load properties. Please try again.');
+      console.error('Failed to load properties:', err);
+      setError('Failed to load properties. Please try again.');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Run once on mount; abort in-flight request if component unmounts
   useEffect(() => {
     fetchProperties();
-    return () => { if (abortCtrl.current) abortCtrl.current.abort(); };
   }, [fetchProperties]);
 
   const handleTabClick = (tab) => {
