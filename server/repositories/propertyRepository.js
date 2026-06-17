@@ -9,6 +9,10 @@ const getAllProperties = (filters = {}) => {
     query.city = new RegExp(filters.city, 'i');
   }
 
+  if (filters.type) {
+    query.type = filters.type;
+  }
+
   if (filters.minPrice || filters.maxPrice) {
     query.price = {};
     if (filters.minPrice) query.price.$gte = Number(filters.minPrice);

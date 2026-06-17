@@ -39,7 +39,6 @@ const propertySchema = new mongoose.Schema({
     required: true,
   },
 }, {
-  // Automatically adds createdAt and updatedAt timestamps
   timestamps: true,
 });
 

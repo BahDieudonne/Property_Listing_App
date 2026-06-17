@@ -1,8 +1,9 @@
-const express    = require('express');
-const cors       = require('cors');
-const dotenv     = require('dotenv');
-const cookieParser = require('cookie-parser'); // NEW: reads cookies from requests
-const connectDB  = require('./config/db');
+const express      = require('express');
+const cors         = require('cors');
+const dotenv       = require('dotenv');
+const cookieParser = require('cookie-parser');
+const path         = require('path');
+const connectDB    = require('./config/db');
 
 dotenv.config();
 connectDB();
@@ -11,16 +12,19 @@ const app = express();
 
 // Allow cookies to be sent from the React frontend (credentials: true is required)
 app.use(cors({
-  origin: 'http://localhost:3000', // React dev server origin
+  origin: 'http://localhost:5173', // Vite dev server origin
   credentials: true,               // Allow cookies to be included in requests
 }));
 
 app.use(express.json());
-app.use(cookieParser()); // NEW: parse cookies so req.cookies is available
+app.use(cookieParser());
 
-app.use('/api/auth',       require('./routes/authRoutes'));
-app.use('/api/users',      require('./routes/userRoutes'));
-app.use('/api/properties', require('./routes/propertyRoutes'));
+// Serve uploaded property images as static files at /uploads/*
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+app.use('/api/auth',       require('./routes/auth.Routes'));
+app.use('/api/users',      require('./routes/user.Routes'));
+app.use('/api/properties', require('./routes/property.Routes'));
 
 // 404 handler
 app.use((req, res) => {

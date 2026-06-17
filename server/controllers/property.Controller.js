@@ -1,71 +1,109 @@
-// Import all repository functions for property database operations
 const repo = require('../repositories/propertyRepository');
 
-// ===== GET ALL PROPERTIES  =====
-const getAllProperties = async (req, res) => {
-  const { city, minPrice, maxPrice } = req.query;
+// Builds the full URL for an uploaded file so it can be stored and served directly
+const fileUrl = (req, filename) => `${req.protocol}://${req.get('host')}/uploads/${filename}`;
 
-  const properties = await repo.getAllProperties({ city, minPrice, maxPrice });
-  res.status(200).json(properties);
+// GET /api/properties
+const getAllProperties = async (req, res) => {
+  try {
+    const { city, minPrice, maxPrice, type } = req.query;
+    const properties = await repo.getAllProperties({ city, minPrice, maxPrice, type });
+    res.status(200).json(properties);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error fetching properties' });
+  }
 };
 
-// ===== GET SINGLE PROPERTY  =====
 // GET /api/properties/:id
 const getPropertyById = async (req, res) => {
-  const property = await repo.getPropertyById(req.params.id);
-
-  if (!property) return res.status(404).json({ message: 'Property not found' });
-  res.status(200).json(property);
+  try {
+    const property = await repo.getPropertyById(req.params.id);
+    if (!property) return res.status(404).json({ message: 'Property not found' });
+    res.status(200).json(property);
+  } catch (err) {
+    res.status(400).json({ message: 'Invalid property ID' });
+  }
 };
 
-// ===== GET MY LISTINGS (Private) =====
 // GET /api/properties/my-listings
 const getMyListings = async (req, res) => {
-  const properties = await repo.getPropertiesByAuthor(req.user._id);
-  res.status(200).json(properties);
+  try {
+    const properties = await repo.getPropertiesByAuthor(req.user._id);
+    res.status(200).json(properties);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error fetching your listings' });
+  }
 };
 
-// ===== CREATE PROPERTY (Private) =====
 // POST /api/properties
 const createProperty = async (req, res) => {
-  const { title, description, price, city, country, type, imageUrls } = req.body;
+  try {
+    const { title, description, price, city, country, type } = req.body;
 
-  // Validate that all required fields are present
-  if (!title || !description || !price || !city || !country || !type) {
-    return res.status(400).json({ message: 'All required fields must be provided' });
+    if (!title || !description || !price || !city || !country || !type) {
+      return res.status(400).json({ message: 'All required fields must be provided' });
+    }
+
+    // Convert uploaded files to full URLs; fall back to empty array if none
+    const imageUrls = req.files?.length
+      ? req.files.map(f => fileUrl(req, f.filename))
+      : [];
+
+    const property = await repo.createProperty({
+      title,
+      description,
+      price:  Number(price),
+      city,
+      country,
+      type,
+      imageUrls,
+      author: req.user._id,
+    });
+
+    res.status(201).json(property);
+  } catch (err) {
+    console.error('Create property error:', err);
+    res.status(500).json({ message: 'Server error creating property' });
   }
-
-  const property = await repo.createProperty({
-    title,
-    description,
-    price,
-    city,
-    country,
-    type,
-    imageUrls: imageUrls || [],
-    author: req.user._id,       
-  });
-
-  res.status(201).json(property);
 };
 
-// ===== UPDATE PROPERTY (Owner only) =====
 // PUT /api/properties/:id
 const updateProperty = async (req, res) => {
-  const { title, description, price, city, country, type, imageUrls } = req.body;
+  try {
+    const { title, description, price, city, country, type, existingImages } = req.body;
 
-  const updated = await repo.updateProperty(req.params.id, {
-    title, description, price, city, country, type, imageUrls,
-  });
+    // If new files were uploaded use them; otherwise keep the existing image URLs
+    let imageUrls;
+    if (req.files?.length) {
+      imageUrls = req.files.map(f => fileUrl(req, f.filename));
+    } else {
+      imageUrls = existingImages ? JSON.parse(existingImages) : [];
+    }
 
-  res.status(200).json(updated);
+    const updated = await repo.updateProperty(req.params.id, {
+      title,
+      description,
+      price: Number(price),
+      city,
+      country,
+      type,
+      imageUrls,
+    });
+
+    res.status(200).json(updated);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error updating property' });
+  }
 };
 
-// ===== DELETE PROPERTY (Owner only) =====
 // DELETE /api/properties/:id
 const deleteProperty = async (req, res) => {
-  await repo.deleteProperty(req.params.id);
-  res.status(200).json({ message: 'Property deleted successfully' });
+  try {
+    await repo.deleteProperty(req.params.id);
+    res.status(200).json({ message: 'Property deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error deleting property' });
+  }
 };
 
 module.exports = {
