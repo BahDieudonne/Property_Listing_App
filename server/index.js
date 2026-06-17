@@ -12,8 +12,14 @@ const app = express();
 
 // Allow cookies to be sent from the React frontend (credentials: true is required)
 app.use(cors({
-  origin: 'http://localhost:5173', // Vite dev server origin
-  credentials: true,               // Allow cookies to be included in requests
+  origin: (origin, callback) => {
+    if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
 }));
 
 app.use(express.json());
