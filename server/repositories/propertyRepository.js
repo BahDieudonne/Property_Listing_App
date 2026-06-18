@@ -13,6 +13,10 @@ const getAllProperties = (filters = {}) => {
     query.type = filters.type;
   }
 
+  if (filters.listingType) {
+    query.listingType = filters.listingType;
+  }
+
   if (filters.minPrice || filters.maxPrice) {
     query.price = {};
     if (filters.minPrice) query.price.$gte = Number(filters.minPrice);

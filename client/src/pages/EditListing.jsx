@@ -1,159 +1,253 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate }      from 'react-router-dom';
-import axiosInstance   from '../services/axiosInstance';
-import InputField      from '../components/InputField';
-import LoadingSpinner  from '../components/LoadingSpinner';
+import { useParams, useNavigate } from 'react-router-dom';
+import axiosInstance from '../services/axiosInstance';
+import InputField from '../components/InputField';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { resolveImageUrl, fallbackImageUrl } from '../services/imageUrl';
 
 const PROPERTY_TYPES = ['Apartment', 'House', 'Studio'];
 
 const EditListing = () => {
-  const { id }   = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
 
-  const [form,        setForm]        = useState(null);
-  const [existingImgs, setExistingImgs] = useState([]);  // URLs already in the DB
-  const [newImages,   setNewImages]   = useState([]);    // newly selected File objects
-  const [previews,    setPreviews]    = useState([]);    // object URLs for new files
-  const [errors,      setErrors]      = useState({});
+  const [form, setForm] = useState(null);
+  const [existingImgs, setExistingImgs] = useState([]);
+  const [newImages, setNewImages] = useState([]);
+  const [previews, setPreviews] = useState([]);
+  const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
-  const [loading,     setLoading]     = useState(true);
-  const [saving,      setSaving]      = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const fileInputRef = useRef(null);
 
-  // Fetch current property data on mount; abort if unmounted mid-request
   useEffect(() => {
+    let mounted = true;
     const controller = new AbortController();
 
-    axiosInstance.get(`/properties/${id}`, { signal: controller.signal })
-      .then(({ data }) => {
+    const loadListing = async () => {
+      try {
+        const { data } = await axiosInstance.get(`/properties/${id}`, {
+          signal: controller.signal,
+        });
+
+        if (!mounted) return;
+
         setForm({
-          title:       data.title,
-          description: data.description,
-          price:       data.price,
-          city:        data.city,
-          country:     data.country,
-          type:        data.type,
+          title: data.title || '',
+          description: data.description || '',
+          price: data.price || '',
+          city: data.city || '',
+          country: data.country || '',
+          type: data.type || '',
+          listingType: data.listingType || 'rent',
         });
         setExistingImgs(data.imageUrls || []);
-      })
-      .catch(err => {
-        if (err.name !== 'CanceledError') setServerError('Property not found or access denied.');
-      })
-      .finally(() => setLoading(false));
+      } catch (err) {
+        if (err.name !== 'CanceledError') {
+          setServerError('Failed to load listing details.');
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
 
-    return () => controller.abort();
+    loadListing();
+
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
   }, [id]);
 
-  // Revoke object URLs when component unmounts
   useEffect(() => {
-    return () => previews.forEach(url => URL.revokeObjectURL(url));
+    return () => {
+      previews.forEach(url => URL.revokeObjectURL(url));
+    };
   }, [previews]);
 
   const validate = () => {
     const errs = {};
-    if (!form.title)   errs.title   = 'Title is required';
-    if (!form.price || isNaN(form.price) || Number(form.price) < 50000)
+
+    if (!form.title) errs.title = 'Title is required';
+    if (!form.description) errs.description = 'Description is required';
+    if (!form.price || Number(form.price) < 50000)
       errs.price = 'Price must be at least 50,000 FCFA';
-    if (!form.city)    errs.city    = 'City is required';
+    if (!form.city) errs.city = 'City is required';
     if (!form.country) errs.country = 'Country is required';
+    if (!form.type) errs.type = 'Property type is required';
+    if (!form.listingType) errs.listingType = 'Please select For Rent or For Sale';
+    if (existingImgs.length === 0 && newImages.length === 0)
+      errs.images = 'At least one image is required';
+
     return errs;
   };
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
+
     previews.forEach(url => URL.revokeObjectURL(url));
     setNewImages(files);
-    setPreviews(files.map(f => URL.createObjectURL(f)));
-  };
-
-  const removeNewImage = (index) => {
-    URL.revokeObjectURL(previews[index]);
-    setNewImages(prev  => prev.filter((_, i) => i !== index));
-    setPreviews(prev   => prev.filter((_, i) => i !== index));
+    setPreviews(files.map(file => URL.createObjectURL(file)));
+    setErrors(prev => ({ ...prev, images: '' }));
   };
 
   const removeExistingImage = (index) => {
     setExistingImgs(prev => prev.filter((_, i) => i !== index));
   };
 
+  const removeNewImage = (index) => {
+    URL.revokeObjectURL(previews[index]);
+    setNewImages(prev => prev.filter((_, i) => i !== index));
+    setPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
-    if (Object.keys(errs).length) return setErrors(errs);
+    if (Object.keys(errs).length) {
+      setErrors(errs);
+      return;
+    }
 
+    setErrors({});
     setSaving(true);
+    setServerError('');
+
     try {
       const formData = new FormData();
-      formData.append('title',       form.title);
+      formData.append('title', form.title);
       formData.append('description', form.description);
-      formData.append('price',       form.price);
-      formData.append('city',        form.city);
-      formData.append('country',     form.country);
-      formData.append('type',        form.type);
+      formData.append('price', form.price);
+      formData.append('city', form.city);
+      formData.append('country', form.country);
+      formData.append('type', form.type);
+      formData.append('listingType', form.listingType);
 
       if (newImages.length) {
-        // New files replace the images
         newImages.forEach(file => formData.append('images', file));
       } else {
-        // No new files — send existing URLs so the backend keeps them
         formData.append('existingImages', JSON.stringify(existingImgs));
       }
 
       await axiosInstance.put(`/properties/${id}`, formData);
       navigate('/my-listings');
     } catch (err) {
-      setServerError(err.response?.data?.message || 'Failed to update listing');
+      setServerError(err.response?.data?.message || 'Failed to update listing.');
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <LoadingSpinner />;
-  if (!form)   return (
-    <div className="alert alert--error" style={{ margin: '2rem' }}>{serverError}</div>
-  );
+  if (loading || !form) return <LoadingSpinner />;
 
   return (
     <div className="form-page">
       <h2>Edit Listing</h2>
-
       {serverError && <div className="alert alert--error">{serverError}</div>}
 
       <form onSubmit={handleSubmit} className="listing-form" noValidate>
-        <InputField label="Title" name="title" value={form.title} onChange={handleChange} error={errors.title} />
+        <InputField
+          label="Title"
+          name="title"
+          value={form.title}
+          onChange={handleChange}
+          error={errors.title}
+        />
 
         <div className="input-group">
           <label className="input-label">Description</label>
-          <textarea name="description" value={form.description} onChange={handleChange} className="input-field" rows={4} />
+          <textarea
+            name="description"
+            value={form.description}
+            onChange={handleChange}
+            className={`input-field ${errors.description ? 'input-error' : ''}`}
+            rows={4}
+          />
+          {errors.description && <span className="error-text">{errors.description}</span>}
         </div>
 
         <div className="form-row">
-          <InputField label="Price (FCFA/month)" type="number" name="price" value={form.price} onChange={handleChange} error={errors.price} />
+          <InputField
+            label="Price (FCFA/month)"
+            type="number"
+            name="price"
+            value={form.price}
+            onChange={handleChange}
+            error={errors.price}
+          />
           <div className="input-group">
             <label className="input-label">Property Type</label>
-            <select name="type" value={form.type} onChange={handleChange} className="input-field">
-              {PROPERTY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            <select
+              name="type"
+              value={form.type}
+              onChange={handleChange}
+              className={`input-field ${errors.type ? 'input-error' : ''}`}
+            >
+              {PROPERTY_TYPES.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
             </select>
+            {errors.type && <span className="error-text">{errors.type}</span>}
           </div>
         </div>
 
-        <div className="form-row">
-          <InputField label="City"    name="city"    value={form.city}    onChange={handleChange} error={errors.city} />
-          <InputField label="Country" name="country" value={form.country} onChange={handleChange} error={errors.country} />
+        <div className="input-group">
+          <label className="input-label">Listing Purpose</label>
+          <div className="listing-type-toggle">
+            {['rent', 'sale'].map(opt => (
+              <label key={opt} className={`listing-type-option${form.listingType === opt ? ' listing-type-option--active' : ''}`}>
+                <input
+                  type="radio"
+                  name="listingType"
+                  value={opt}
+                  checked={form.listingType === opt}
+                  onChange={handleChange}
+                />
+                {opt === 'rent' ? 'For Rent' : 'For Sale'}
+              </label>
+            ))}
+          </div>
+          {errors.listingType && <span className="error-text">{errors.listingType}</span>}
         </div>
 
-        {/* ===== CURRENT IMAGES ===== */}
+        <div className="form-row">
+          <InputField
+            label="City"
+            name="city"
+            value={form.city}
+            onChange={handleChange}
+            error={errors.city}
+          />
+          <InputField
+            label="Country"
+            name="country"
+            value={form.country}
+            onChange={handleChange}
+            error={errors.country}
+          />
+        </div>
+
         {existingImgs.length > 0 && newImages.length === 0 && (
           <div className="input-group">
             <label className="input-label">Current Images</label>
             <div className="upload-previews">
               {existingImgs.map((src, i) => (
                 <div key={i} className="upload-preview">
-                  <img src={src.startsWith('http') ? src : `/images/${src}`} alt={`image ${i + 1}`} />
+                  <img
+                    src={resolveImageUrl(src)}
+                    alt={`image ${i + 1}`}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = fallbackImageUrl('Property', 400, 250);
+                    }}
+                  />
                   <button
                     type="button"
                     className="upload-preview__remove"
@@ -168,7 +262,6 @@ const EditListing = () => {
           </div>
         )}
 
-        {/* ===== UPLOAD NEW IMAGES ===== */}
         <div className="input-group">
           <label className="input-label">
             {newImages.length ? 'New Images (will replace current)' : 'Replace Images'}
@@ -190,9 +283,9 @@ const EditListing = () => {
             <p className="upload-zone__text">Click to select new images</p>
             <p className="upload-zone__hint">JPEG, PNG or WebP · max 5 MB each</p>
           </div>
+          {errors.images && <span className="error-text">{errors.images}</span>}
         </div>
 
-        {/* New image previews */}
         {previews.length > 0 && (
           <div className="upload-previews">
             {previews.map((src, i) => (

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { resolveImageUrl, fallbackImageUrl } from '../services/imageUrl';
 
 const BedIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -14,13 +15,11 @@ const UserIcon = () => (
 );
 
 const PropertyCard = ({ property, onDelete, isOwner }) => {
-  const { _id, title, description, city, country, price, type, imageUrls } = property;
+  const { _id, title, description, city, country, price, type, listingType, imageUrls } = property;
 
   const imgSrc = imageUrls?.[0]
-    ? (imageUrls[0].startsWith('http')
-        ? imageUrls[0]
-        : `/images/${imageUrls[0]}`)
-    : `https://via.placeholder.com/400x250/1e2130/9095b0?text=${encodeURIComponent(type || 'Property')}`;
+    ? resolveImageUrl(imageUrls[0])
+    : fallbackImageUrl(type || 'Property', 400, 250);
 
   return (
     <div className="property-card">
@@ -31,8 +30,15 @@ const PropertyCard = ({ property, onDelete, isOwner }) => {
           alt={title}
           className="property-card__image"
           loading="lazy"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = fallbackImageUrl(type || 'Property', 400, 250);
+          }}
         />
         <span className="property-card__badge">{type}</span>
+        <span className={`property-card__listing-badge property-card__listing-badge--${listingType}`}>
+          {listingType === 'rent' ? 'For Rent' : 'For Sale'}
+        </span>
       </Link>
 
       <div className="property-card__body">
@@ -49,7 +55,8 @@ const PropertyCard = ({ property, onDelete, isOwner }) => {
 
         <div className="property-card__footer">
           <span className="property-card__price">
-            {price.toLocaleString('fr-FR')} FCFA<span>/month</span>
+            {price.toLocaleString('fr-FR')} FCFA
+            {listingType === 'rent' && <span>/month</span>}
           </span>
           <span className="property-card__rating">
             <span className="property-card__star">★</span>

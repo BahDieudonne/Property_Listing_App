@@ -7,7 +7,7 @@ const PROPERTY_TYPES = ['Apartment', 'House', 'Studio'];
 
 const CreateListing = () => {
   const [form, setForm] = useState({
-    title: '', description: '', price: '', city: '', country: '', type: '',
+    title: '', description: '', price: '', city: '', country: '', type: '', listingType: 'rent',
   });
   const [images,      setImages]      = useState([]);   // File objects
   const [previews,    setPreviews]    = useState([]);   // Object URLs
@@ -32,6 +32,7 @@ const CreateListing = () => {
     if (!form.city)        errs.city        = 'City is required';
     if (!form.country)     errs.country     = 'Country is required';
     if (!form.type)        errs.type        = 'Property type is required';
+    if (!form.listingType) errs.listingType = 'Please select For Rent or For Sale';
     if (images.length === 0) errs.images    = 'At least one image is required';
     return errs;
   };
@@ -72,6 +73,7 @@ const CreateListing = () => {
       formData.append('city',        form.city);
       formData.append('country',     form.country);
       formData.append('type',        form.type);
+      formData.append('listingType', form.listingType);
       images.forEach(file => formData.append('images', file));
 
       await axiosInstance.post('/properties', formData);
@@ -132,6 +134,25 @@ const CreateListing = () => {
             </select>
             {errors.type && <span className="error-text">{errors.type}</span>}
           </div>
+        </div>
+
+        <div className="input-group">
+          <label className="input-label">Listing Purpose</label>
+          <div className="listing-type-toggle">
+            {['rent', 'sale'].map(opt => (
+              <label key={opt} className={`listing-type-option${form.listingType === opt ? ' listing-type-option--active' : ''}`}>
+                <input
+                  type="radio"
+                  name="listingType"
+                  value={opt}
+                  checked={form.listingType === opt}
+                  onChange={handleChange}
+                />
+                {opt === 'rent' ? 'For Rent' : 'For Sale'}
+              </label>
+            ))}
+          </div>
+          {errors.listingType && <span className="error-text">{errors.listingType}</span>}
         </div>
 
         <div className="form-row">

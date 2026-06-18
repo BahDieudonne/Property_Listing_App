@@ -31,6 +31,12 @@ const propertySchema = new mongoose.Schema({
     enum:     ['Apartment', 'House', 'Studio'],
     required: true,
   },
+  listingType: {
+    type:     String,
+    enum:     ['rent', 'sale'],
+    required: true,
+    default:  'rent',
+  },
   // Array of image filenames or URLs
   imageUrls: [{ type: String }],
   author: {

@@ -4,27 +4,27 @@ import InputField from './InputField';
 // Sidebar panel for filtering properties by city and price range
 // Props:
 //   onFilter — function from Home.jsx that triggers a new API fetch with given filters
-const FilterSidebar = ({ onFilter }) => {
-  const [city,     setCity]     = useState('');
-  const [minPrice, setMinPrice] = useState('');
-  const [maxPrice, setMaxPrice] = useState('');
+const FilterSidebar = ({ onFilter, className = '' }) => {
+  const [city,        setCity]        = useState('');
+  const [minPrice,    setMinPrice]    = useState('');
+  const [maxPrice,    setMaxPrice]    = useState('');
+  const [listingType, setListingType] = useState('');
 
-  // Submit current filter values to the parent
   const handleSubmit = (e) => {
     e.preventDefault();
-    onFilter({ city, minPrice, maxPrice });
+    onFilter({ city, minPrice, maxPrice, listingType });
   };
 
-  // Reset all fields and fetch unfiltered results
   const handleReset = () => {
     setCity('');
     setMinPrice('');
     setMaxPrice('');
-    onFilter({}); // Empty object means no filters
+    setListingType('');
+    onFilter({});
   };
 
   return (
-    <aside className="filter-sidebar">
+    <aside className={`filter-sidebar${className ? ` ${className}` : ''}`}>
       <h3>Filters</h3>
       <form onSubmit={handleSubmit}>
         <InputField
@@ -33,6 +33,19 @@ const FilterSidebar = ({ onFilter }) => {
           onChange={(e) => setCity(e.target.value)}
           placeholder="e.g. Buea, Douala"
         />
+        <div className="input-group">
+          <label className="input-label">Listing Type</label>
+          <select
+            className="input-field"
+            value={listingType}
+            onChange={(e) => setListingType(e.target.value)}
+          >
+            <option value="">All</option>
+            <option value="rent">For Rent</option>
+            <option value="sale">For Sale</option>
+          </select>
+        </div>
+
         <InputField
           label="Min Price (FCFA)"
           type="number"

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link }    from 'react-router-dom';
 import axiosInstance          from '../services/axiosInstance';
 import LoadingSpinner         from '../components/LoadingSpinner';
+import { resolveImageUrl, fallbackImageUrl } from '../services/imageUrl';
 
 const PropertyDetail = () => {
   const { id } = useParams();
@@ -10,21 +11,19 @@ const PropertyDetail = () => {
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState('');
 
-  // Fetch property on mount; abort if component unmounts before the request resolves
   useEffect(() => {
+    let mounted = true;
     const controller = new AbortController();
 
     axiosInstance.get(`/properties/${id}`, { signal: controller.signal })
-      .then(({ data }) => setProperty(data))
-      .catch(err => {
-        if (err.name !== 'CanceledError') setError('Property not found.');
-      })
-      .finally(() => setLoading(false));
+      .then(({ data }) => { if (mounted) setProperty(data); })
+      .catch(err => { if (mounted && err.name !== 'CanceledError') setError('Property not found.'); })
+      .finally(() => { if (mounted) setLoading(false); });
 
-    return () => controller.abort();
+    return () => { mounted = false; controller.abort(); };
   }, [id]);
 
-  if (loading) return <LoadingSpinner />;
+  if (loading || !property) return <LoadingSpinner />;
 
   if (error) return (
     <div className="page-container">
@@ -35,11 +34,11 @@ const PropertyDetail = () => {
     </div>
   );
 
-  const { title, description, price, city, country, type, imageUrls, author } = property;
+  const { title, description, price, city, country, type, listingType, imageUrls, author } = property;
 
   const imgSrc = imageUrls?.[0]
-    ? (imageUrls[0].startsWith('http') ? imageUrls[0] : `/images/${imageUrls[0]}`)
-    : `https://via.placeholder.com/800x420/1e2130/9095b0?text=${encodeURIComponent(type || 'Property')}`;
+    ? resolveImageUrl(imageUrls[0])
+    : fallbackImageUrl(type || 'Property', 800, 420);
 
   const authorName   = author?.name || author?.username || 'Unknown';
   const authorInitial = authorName[0].toUpperCase();
@@ -48,8 +47,19 @@ const PropertyDetail = () => {
     <div className="detail-page">
       {/* ===== HERO IMAGE ===== */}
       <div className="detail-hero">
-        <img src={imgSrc} alt={title} className="detail-hero__img" />
+        <img
+          src={imgSrc}
+          alt={title}
+          className="detail-hero__img"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = fallbackImageUrl(type || 'Property', 800, 420);
+          }}
+        />
         <span className="detail-hero__badge">{type}</span>
+        <span className={`detail-hero__listing-badge detail-hero__listing-badge--${listingType}`}>
+          {listingType === 'rent' ? 'For Rent' : 'For Sale'}
+        </span>
       </div>
 
       {/* ===== BODY ===== */}
@@ -63,7 +73,7 @@ const PropertyDetail = () => {
           </div>
           <div className="detail-price">
             {price.toLocaleString('fr-FR')} FCFA
-            <span>/month</span>
+            {listingType === 'rent' && <span>/month</span>}
           </div>
         </div>
 

@@ -17,9 +17,7 @@ import './App.css';
 function App() {
   return (
     <AuthProvider>
-      {/* BrowserRouter enables client-side routing (URL changes without page reload) */}
-      <BrowserRouter>
-        {/* Navbar is outside Routes so it appears on every page */}
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Navbar />
 
         <main className="main-content">

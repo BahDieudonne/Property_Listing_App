@@ -6,8 +6,8 @@ const fileUrl = (req, filename) => `${req.protocol}://${req.get('host')}/uploads
 // GET /api/properties
 const getAllProperties = async (req, res) => {
   try {
-    const { city, minPrice, maxPrice, type } = req.query;
-    const properties = await repo.getAllProperties({ city, minPrice, maxPrice, type });
+    const { city, minPrice, maxPrice, type, listingType } = req.query;
+    const properties = await repo.getAllProperties({ city, minPrice, maxPrice, type, listingType });
     res.status(200).json(properties);
   } catch (err) {
     res.status(500).json({ message: 'Server error fetching properties' });
@@ -38,13 +38,12 @@ const getMyListings = async (req, res) => {
 // POST /api/properties
 const createProperty = async (req, res) => {
   try {
-    const { title, description, price, city, country, type } = req.body;
+    const { title, description, price, city, country, type, listingType } = req.body;
 
-    if (!title || !description || !price || !city || !country || !type) {
+    if (!title || !description || !price || !city || !country || !type || !listingType) {
       return res.status(400).json({ message: 'All required fields must be provided' });
     }
 
-    // Convert uploaded files to full URLs; fall back to empty array if none
     const imageUrls = req.files?.length
       ? req.files.map(f => fileUrl(req, f.filename))
       : [];
@@ -56,6 +55,7 @@ const createProperty = async (req, res) => {
       city,
       country,
       type,
+      listingType,
       imageUrls,
       author: req.user._id,
     });
@@ -70,9 +70,8 @@ const createProperty = async (req, res) => {
 // PUT /api/properties/:id
 const updateProperty = async (req, res) => {
   try {
-    const { title, description, price, city, country, type, existingImages } = req.body;
+    const { title, description, price, city, country, type, listingType, existingImages } = req.body;
 
-    // If new files were uploaded use them; otherwise keep the existing image URLs
     let imageUrls;
     if (req.files?.length) {
       imageUrls = req.files.map(f => fileUrl(req, f.filename));
@@ -87,6 +86,7 @@ const updateProperty = async (req, res) => {
       city,
       country,
       type,
+      listingType,
       imageUrls,
     });
 
